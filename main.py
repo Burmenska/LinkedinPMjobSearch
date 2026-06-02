@@ -1,4 +1,5 @@
 import csv
+import pandas as pd
 from jobspy import scrape_jobs
 from openpyxl import Workbook
 
@@ -9,11 +10,27 @@ jobs = scrape_jobs(
     location="Germany",
     results_wanted=20,
     hours_old=72,
-    country_indeed="Germany",
     linkedin_fetch_description=True,
 )
 
-print(f"Found {len(jobs)} jobs")
+print(f"Found {len(jobs)} jobs before filtering")
+
+# --- Exclude jobs requiring strong German ---
+EXCLUDE_WORDS = [
+    "fluent german",
+    "native german",
+]
+pattern = "|".join(EXCLUDE_WORDS)
+
+mask = (
+    jobs["title"].fillna("").str.contains(pattern, case=False, na=False)
+    | jobs["description"].fillna("").str.contains(pattern, case=False, na=False)
+)
+removed = int(mask.sum())
+jobs = jobs[~mask].reset_index(drop=True)
+print(f"Excluded {removed} jobs requiring fluent/native German")
+print(f"{len(jobs)} jobs remaining")
+
 print(jobs[["title", "company", "location", "job_url"]].head(20))
 
 # --- Backup: full data to CSV ---
